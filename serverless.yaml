@@ -1,0 +1,49 @@
+service: vibes-api
+
+provider:
+  name: aws
+  stage: ${env:STAGE}
+  region: ${env:REGION}
+  runtime: nodejs14.x
+  httpApi: { cors: true }
+  lambdaHashingVersion: "20201221"
+  environment:
+    STAGE: ${self:provider.stage}
+    RPC_ENDPOINT: ${ssm:/${self:provider.stage}/vibes/api/rpc-endpoint}
+  iamRoleStatements:
+  - Effect: Allow
+    Action: dynamodb:*
+    Resource: arn:aws:dynamodb:${self:provider.region}:*:table/vibes-tokens-${self:provider.stage}-table*
+
+custom:
+  webpack:
+    webpackConfig: ./webpack.sls.js
+
+plugins:
+  - serverless-webpack
+
+functions:
+  getTokens:
+    handler: src/routes.getTokens
+    timeout: 29
+    events:
+    - httpApi: GET /tokens
+
+resources:
+  Resources:
+    Table:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: vibes-tokens-${self:provider.stage}-table
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: True
+        AttributeDefinitions:
+        - { AttributeName: hk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+        KeySchema:
+        - { AttributeName: hk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+
+

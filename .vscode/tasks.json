@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🚀 Deploy API",
+      "type": "shell",
+      "command": "AWS_PROFILE=vibes STAGE=${input:stage} REGION=us-east-1 npm run deploy",
+      "problemMatcher": [],
+    },
+  ],
+  "inputs": [
+    {
+      "id": "stage",
+      "description": "Stage identifier (eg \"prd\")",
+      "default": "prd",
+      "type": "promptString"
+    }
+  ]
+}
