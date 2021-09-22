@@ -10,15 +10,20 @@ const queue = new PQueue({
 
 export const fetchIpfsJson = async <T>(hash: string): Promise<T> => {
   console.log(`fetching ${hash}`);
-  const resp = await queue.add(() => fetch(`https://ipfs.io/ipfs/${hash}`));
+  const resp = await queue.add(() => fetch(`https://gateway.pinata.cloud/ipfs/${hash}`));
   const json = await resp.json();
   console.log(`downloaded ${hash}`);
   return json;
 };
 
-export const ipfsGatewayUrl = (ipfsUrl: string): string => {
-  const match = ipfsUrl.match(/\/ipfs\/(.*)$/);
+export const extractHashFromUri = (ipfsUri: string): string => {
+  const match = ipfsUri.match(/\/ipfs\/(.*)$/);
   if (!match) throw new Error();
   const [, hash] = match;
-  return `https://ipfs.io/ipfs/${hash}`;
+  return hash;
+};
+
+export const ipfsGatewayUrl = (ipfsUrl: string): string => {
+  const hash = extractHashFromUri(ipfsUrl);
+  return `https://gateway.pinata.cloud/ipfs/${hash}`;
 };

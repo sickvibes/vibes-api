@@ -9,11 +9,16 @@ provider:
   lambdaHashingVersion: "20201221"
   environment:
     STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
     RPC_ENDPOINT: ${ssm:/${self:provider.stage}/vibes/api/rpc-endpoint}
+    PINATA_CONFIG: ${ssm:/${self:provider.stage}/vibes/api/pinata-config}
   iamRoleStatements:
   - Effect: Allow
     Action: dynamodb:*
     Resource: arn:aws:dynamodb:${self:provider.region}:*:table/vibes-tokens-${self:provider.stage}-table*
+  - Effect: Allow
+    Action: sqs:*
+    Resource: arn:aws:sqs:${self:provider.region}:*:vibes-pinning-${self:provider.stage}
 
 custom:
   webpack:
@@ -23,14 +28,42 @@ plugins:
   - serverless-webpack
 
 functions:
+
+  # ---
+  # api
+  # ---
+
   getTokens:
     handler: src/routes.getTokens
-    timeout: 29
+    timeout: 20
     events:
     - httpApi: GET /tokens
 
+  # ---
+  # sqs
+  # ---
+
+  onPinNftMessage:
+    handler: src/service.onPinNftMessage
+    reservedConcurrency: 1 # no parallelism to avoid IPFS issues
+    timeout: 20
+    events:
+    - sqs:
+        arn: { Fn::GetAtt: [ PinningQueue, Arn ] }
+        batchSize: 1
+
+  # ---
+  # service
+  # ---
+
+  queuePinAll:
+    handler: src/service.queuePinAll
+    timeout: 30
+
 resources:
   Resources:
+
+    # service db, stores cached metadata and other info
     Table:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -46,4 +79,16 @@ resources:
         - { AttributeName: hk, KeyType: HASH }
         - { AttributeName: sk, KeyType: RANGE }
 
+    # jobs to pin hashes to ipfs
+    PinningQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: vibes-pinning-${self:provider.stage}
+        VisibilityTimeout: 30
+        RedrivePolicy:
+          # max received batch size
+          maxReceiveCount: 5
+          deadLetterTargetArn: { Fn::GetAtt: [ PinningDLQ, Arn ] }
 
+    PinningDLQ:
+      Type: AWS::SQS::Queue

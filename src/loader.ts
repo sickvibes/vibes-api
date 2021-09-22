@@ -1,4 +1,5 @@
 import { Metadata, resolveMetadata } from './nft';
+import { queuePinJobs } from './pinning';
 import { batchWriteTokens, getLoadState, setLoadOffset } from './table';
 import { getTokensFromContract, RecentToken } from './wellspring-v2';
 
@@ -55,6 +56,11 @@ export const streamAndWriteTokens = async (offset = 0): Promise<void> => {
     // race condition if streamAndWriteTokens is called concurrently and a token
     // is infused during the operation ... prolly fine
     await setLoadOffset(offset + totalWritten);
+    await queuePinJobs(
+      chunk.map((c) => {
+        return { tokenUri: c.token.tokenUri, metadata: c.metadata };
+      })
+    );
   }
 };
 

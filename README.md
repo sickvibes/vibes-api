@@ -15,8 +15,14 @@ npm i
 Add an SSM parameter for the Polygon RPC endpoint:
 
 * `/$STAGE/vibes/api/rpc-endpoint`
+	* eg, `https://rpc.provider.com/foo`
 
-This is sourced at deployment, not runtime.
+Add an SSM parameter for the key and secret (comma-separated) for the Pinata API:
+
+* `/$STAGE/vibes/api/pinata-config`
+	* eg, `fooasdfkasdf, barjkaekdfkjejfaj`
+
+These are sourced at deployment, not runtime.
 
 Assuming production deployment and local AWS credentials stored as `vibes`:
 
